@@ -1,6 +1,6 @@
 
-#ifndef QUADTREE_H
-#define QUADTREE_H
+#ifndef ORDERED_QUADTREE_H
+#define ORDERED_QUADTREE_H
 
 #include <memory>
 #include <cfloat>
@@ -9,7 +9,9 @@
 #include "../types.hpp"
 #include "../osm/osm.hpp"
 
-auto cmp = [](OsmNode a, OsmNode b) { return a.coordinates.getLongitude() > b.coordinates.getLongitude(); };
+bool cmp(OsmNode a, OsmNode b) { 
+    return a.coordinates.getLongitude() > b.coordinates.getLongitude();
+}
 
 class AABB {
     public:
@@ -50,7 +52,7 @@ class OrderedQuadtree {
         OrderedQuadtree* ne = nullptr; 
         OrderedQuadtree* sw = nullptr;
         OrderedQuadtree* se = nullptr;
-        std::set<OsmNode, decltype(cmp)> auxiliarList;
+        std::set<OsmNode, decltype(&cmp)> auxiliarList;
 };
 
-#endif // QUADTREE_H
+#endif // ORDERED_QUADTREE_H

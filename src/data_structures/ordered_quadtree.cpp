@@ -216,6 +216,6 @@ bool OrderedQuadtree::findNearest(const Coordinates& queryPoint, NNResult& best)
                 }
             }
         }
-        return false;
     }
+    return false;
 }
