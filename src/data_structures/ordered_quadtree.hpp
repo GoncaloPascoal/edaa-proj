@@ -9,7 +9,7 @@
 #include "../types.hpp"
 #include "../osm/osm.hpp"
 
-auto cmp = [](Coordinates a, Coordinates b) { return a.getLongitude() > b.getLongitude(); };
+auto cmp = [](OsmNode a, OsmNode b) { return a.coordinates.getLongitude() > b.coordinates.getLongitude(); };
 
 class AABB {
     public:
@@ -50,7 +50,7 @@ class OrderedQuadtree {
         OrderedQuadtree* ne = nullptr; 
         OrderedQuadtree* sw = nullptr;
         OrderedQuadtree* se = nullptr;
-        std::set<Coordinates, decltype(cmp)> auxiliarList;
+        std::set<OsmNode, decltype(cmp)> auxiliarList;
 };
 
 #endif // QUADTREE_H

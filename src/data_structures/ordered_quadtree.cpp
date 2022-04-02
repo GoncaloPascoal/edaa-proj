@@ -73,7 +73,7 @@ OrderedQuadtree::~OrderedQuadtree() {
 }
 
 void OrderedQuadtree::insert(const OsmNode& newPoint) {
-    auxiliarList.insert(newPoint.coordinates);
+    auxiliarList.insert(newPoint);
     insertRec(newPoint);
 }
 
@@ -119,12 +119,20 @@ const OsmNode* OrderedQuadtree::nearestNeighbor(const Coordinates& queryPoint) c
     best.distance = 2 * boundary.maxDimension();
     findNearest(queryPoint, best);
 
-    Coordinates bestCoords = best.point->coordinates;
-
-    auto itr = auxiliarList.lower_bound(Coordinates(bestCoords.getLatitude(), bestCoords.getLongitude() - best.distance));
+    OsmNode lowerBound;
+    lowerBound.coordinates = Coordinates(queryPoint.getLatitude(), queryPoint.getLongitude() - best.distance);
+    auto itr = auxiliarList.lower_bound(lowerBound);
 
     for (; itr != auxiliarList.end(); itr++) {
-        //TODO
+        if (queryPoint.euclideanDistance(itr->coordinates) < best.distance) {
+            // We found a closer point to queryPoint
+            best.point = &(*itr);
+            best.distance = queryPoint.euclideanDistance(itr->coordinates);
+        }
+
+        if (queryPoint.getLongitude() + best.distance > itr->coordinates.getLongitude()) {
+            break;
+        }
     }
 
     return best.point;
