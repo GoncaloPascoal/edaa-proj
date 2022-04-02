@@ -5,64 +5,6 @@
 
 using namespace std;
 
-AABB::AABB(Coordinates topLeft, Coordinates bottomRight) : topLeft(topLeft),
-    bottomRight(bottomRight) {}
-
-Coordinates AABB::center() const {
-    double radiusLat = abs(topLeft.getLatitude() - bottomRight.getLatitude()) / 2,
-        radiusLong = abs(topLeft.getLongitude() - bottomRight.getLongitude()) / 2;
-
-    return Coordinates(topLeft.getLatitude() + radiusLat, topLeft.getLongitude() + radiusLong);
-}
-
-double AABB::maxDimension() const {
-    return max(
-        abs(topLeft.getLatitude() - bottomRight.getLatitude()),
-        abs(topLeft.getLongitude() - bottomRight.getLongitude())
-    );
-}
-
-bool AABB::containsPoint(const Coordinates& coords) const {
-    return coords.getLatitude() >= topLeft.getLatitude() &&
-        coords.getLatitude() <= bottomRight.getLatitude() &&
-        coords.getLongitude() >= topLeft.getLongitude() &&
-        coords.getLongitude() <= bottomRight.getLongitude();
-}
-
-bool AABB::quadIntersects(const Coordinates& center, double radius) const {
-    double cLat = center.getLatitude(), cLong = center.getLongitude(),
-        minLat = topLeft.getLatitude(), maxLat = bottomRight.getLatitude(),
-        minLong = topLeft.getLongitude(), maxLong = bottomRight.getLongitude();
-
-    return maxLat >= cLat - radius && minLat <= cLat + radius &&
-        maxLong >= cLong - radius && minLong <= cLong + radius;
-}
-
-array<AABB, 4> AABB::split() const {
-    double tLat = topLeft.getLatitude(), tLong = topLeft.getLongitude(),
-        bLat = bottomRight.getLatitude(), bLong = bottomRight.getLongitude();
-
-    double deltaLat = abs(tLat - bLat), deltaLong = abs(tLong - bLong);
-
-    Coordinates topMid(tLat + deltaLat / 2, tLong),
-            midLeft(tLat, tLong + deltaLong / 2),
-            center(tLat + deltaLat / 2, tLong + deltaLong / 2),
-            midRight(tLat + deltaLat, tLong + deltaLong / 2),
-            bottomMid(tLat + deltaLat / 2, tLong + deltaLong);
-
-    return {
-        AABB(topLeft, center),
-        AABB(topMid, midRight),
-        AABB(midLeft, bottomMid),
-        AABB(center, bottomRight)
-    };
-}
-
-ostream& operator<<(ostream& os, const AABB& obj) {
-    os << obj.topLeft << " - " << obj.bottomRight;
-    return os;
-}
-
 OrderedQuadtree::OrderedQuadtree(AABB boundary) : boundary(boundary), point(nullptr) {}
 
 OrderedQuadtree::~OrderedQuadtree() {

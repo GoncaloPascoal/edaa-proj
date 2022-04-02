@@ -8,24 +8,11 @@
 #include "../coordinates.hpp"
 #include "../types.hpp"
 #include "../osm/osm.hpp"
+#include "quadtree.hpp"
 
 bool cmp(OsmNode a, OsmNode b) { 
     return a.coordinates.getLongitude() > b.coordinates.getLongitude();
 }
-
-class AABB {
-    public:
-        AABB(Coordinates topLeft, Coordinates bottomRight);
-        Coordinates center() const;
-        double maxDimension() const;
-        bool containsPoint(const Coordinates& coords) const;
-        bool quadIntersects(const Coordinates& center, double radius) const;
-        std::array<AABB, 4> split() const;
-
-        friend std::ostream& operator<<(std::ostream& os, const AABB& obj);
-    private:
-        Coordinates topLeft, bottomRight;
-};
 
 class OrderedQuadtree {
     public:
