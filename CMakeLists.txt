@@ -13,6 +13,7 @@ add_executable(${PROJECT_NAME}
     src/analysis/complexity.cpp
     src/data_structures/quadtree.cpp
     src/data_structures/kd_tree.cpp
+    src/data_structures/ordered_quadtree.cpp
     src/osm/osm.cpp
 
     lib/tinyxml/tinyxml2.cpp
