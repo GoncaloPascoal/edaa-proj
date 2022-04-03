@@ -117,8 +117,8 @@ void quadtreeRealDataComplexityAnalysis(u32 seed) {
     Quadtree quadtree(boundary);
 
     // Insert nodes into Quadtree
-    for (const pair<u64, OsmNode>& node : data.graph.getNodes()) {
-        quadtree.insert(data.graph.getNode(node.first));
+    for (const pair<u64, const OsmNode&>& node : data.graph.getNodes()) {
+        quadtree.insert(node.second);
     }
 
     srand(seed);
