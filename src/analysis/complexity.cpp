@@ -1,6 +1,7 @@
 
 #include <array>
 #include <chrono>
+#include <fstream>
 #include <iostream>
 #include <iomanip>
 #include <random>
@@ -9,10 +10,10 @@
 #include "../data_structures/quadtree.hpp"
 #include "../data_structures/binary_heap.hpp"
 #include "../data_structures/fibonacci_heap.hpp"
+#include "../utils.hpp"
 
 using namespace std;
 using chrono::high_resolution_clock;
-using chrono::duration_cast;
 using chrono::microseconds;
 using chrono::nanoseconds;
 
@@ -20,72 +21,89 @@ double randomDouble(double min, double max) {
     return min + static_cast<double>(rand()) / static_cast<double>(RAND_MAX / (max - min));
 }
 
-template <typename T>
-inline u64 interval(const high_resolution_clock::time_point& start,
-        const high_resolution_clock::time_point& end) {
-    return duration_cast<T>(end - start).count();
-}
-
-void kdTreeQuadtreeComplexityAnalysis(u32 seed) {
-    static const size_t size = 10;
+void kdTreeQuadtreeComplexityAnalysis(u32 seed, bool writeToFile) {
+    static const size_t size = 12;
     static const double minC = -75, maxC = 75;
     static const array<u32, size> numPoints = {100, 500, 1000, 2500, 5000, 10000,
-        50000, 100000, 500000, 1000000};
-    static const u32 nnIterations = 10000;
+        25000, 50000, 100000, 250000, 500000, 1000000};
+    static const u32 cIterations = 10, nnIterations = 10000;
+    static const char* fileName = "tree_ca.txt";
+
+    ofstream ofs(fileName);
 
     srand(seed);
+    random_device rd;
+    default_random_engine eng(rd());
+    uniform_real_distribution<double> randDist(minC, maxC);
 
-    array<i64, size> constructionKDTree = {}, constructionQuadtree = {},
+    array<u64, size> constructionKDTree = {}, constructionQuadtree = {},
         nnKDTree = {}, nnQuadtree = {};
 
     for (u32 i = 0; i < numPoints.size(); ++i) {
         u32 n = numPoints[i];
+        if (writeToFile) ofs << ">" << n << "\n";
 
-        vector<OsmNode> v;
-        v.reserve(n);
-        for (u32 _ = 0; _ < n; ++_) {
-            v.push_back({0, Coordinates(randomDouble(minC, maxC), randomDouble(minC, maxC))});
-        }
+        for (u32 c = 0; c < cIterations; ++c) {
+            vector<OsmNode> v;
+            v.reserve(n);
+            for (u32 _ = 0; _ < n; ++_) {
+                v.push_back({0, Coordinates(randDist(eng), randDist(eng))});
+            }
 
-        vector<reference_wrapper<const OsmNode>> refV;
-        refV.reserve(n);
-        for (OsmNode& n : v) {
-            refV.push_back(n);
-        }
-        
-        auto start = high_resolution_clock::now();
-        KDTree kdt(refV);
-        auto end = high_resolution_clock::now();
-        constructionKDTree[i] = interval<microseconds>(start, end);
-
-        start = high_resolution_clock::now();
-        Quadtree qt(AABB(Coordinates(minC, minC), Coordinates(maxC, maxC)));
-        for (const auto& n : v) {
-            qt.insert(n);
-        }
-        end = high_resolution_clock::now();
-        constructionQuadtree[i] = interval<microseconds>(start, end);
-
-        for (u32 _ = 0; _ < nnIterations; ++_) {
-            Coordinates r(randomDouble(minC, maxC), randomDouble(minC, maxC));
-
-            const OsmNode* kdr, * qtr;
-
+            vector<reference_wrapper<const OsmNode>> refV;
+            refV.reserve(n);
+            for (const OsmNode& n : v) {
+                refV.push_back(n);
+            }
+            
             auto start = high_resolution_clock::now();
-            kdr = kdt.nearestNeighbor(r);
+            KDTree kdt(refV);
             auto end = high_resolution_clock::now();
-            auto us = interval<nanoseconds>(start, end);
-            nnKDTree[i] += us;
+            auto us = interval<microseconds>(start, end);
+            constructionKDTree[i] += us;
+            if (writeToFile) ofs << us << " ";
 
             start = high_resolution_clock::now();
-            qtr = qt.nearestNeighbor(r);
+            Quadtree qt(AABB(Coordinates(minC, minC), Coordinates(maxC, maxC)));
+            for (const auto& n : v) {
+                qt.insert(n);
+            }
             end = high_resolution_clock::now();
-            us = interval<nanoseconds>(start, end);
-            nnQuadtree[i] += us;
+            us = interval<microseconds>(start, end);
+            constructionQuadtree[i] += us;
+            if (writeToFile) ofs << us << "\n";
+
+            if (c == cIterations - 1) {
+                if (writeToFile) ofs << "NN\n";
+
+                for (u32 _ = 0; _ < nnIterations; ++_) {
+                    Coordinates r(randDist(eng), randDist(eng));
+
+                    const OsmNode* kdr, * qtr;
+
+                    auto start = high_resolution_clock::now();
+                    kdr = kdt.nearestNeighbor(r);
+                    auto end = high_resolution_clock::now();
+                    auto ns = interval<nanoseconds>(start, end);
+                    nnKDTree[i] += ns;
+                    if (writeToFile) ofs << ns << " ";
+
+                    start = high_resolution_clock::now();
+                    qtr = qt.nearestNeighbor(r);
+                    end = high_resolution_clock::now();
+                    ns = interval<nanoseconds>(start, end);
+                    nnQuadtree[i] += ns;
+                    if (writeToFile) ofs << ns << "\n";
+                }
+                nnKDTree[i] /= nnIterations;
+                nnQuadtree[i] /= nnIterations;
+            }
         }
-        nnKDTree[i] /= nnIterations;
-        nnQuadtree[i] /= nnIterations;
+        constructionKDTree[i] /= cIterations;
+        constructionQuadtree[i] /= cIterations;
     }
+
+    ofs.close();
 
     cout << "Construction - O(n log n)\n";
     cout << string(50, '-') << "\n";
@@ -126,7 +144,7 @@ void quadtreeRealDataComplexityAnalysis(u32 seed) {
     // Nearest Neighbor Iterations
     for (u32 _ = 0; _ < nnIterations; ++_) {
         Coordinates point(
-            randomDouble(data.minCoords.getLatitude (), data.maxCoords.getLatitude ()),
+            randomDouble(data.minCoords.getLatitude(), data.maxCoords.getLatitude()),
             randomDouble(data.minCoords.getLongitude(), data.maxCoords.getLongitude())
         );
 
@@ -140,13 +158,16 @@ void quadtreeRealDataComplexityAnalysis(u32 seed) {
     cout << nnQuadtree << endl;
 }
 
-void heapComplexityAnalysis(u32 seed) {
+void heapComplexityAnalysis(u32 seed, bool writeToFile) {
     static const size_t size = 7;
     static const double minKey = 0, maxKey = 500;
-    static const array<u32, size> numNodes = {1000, 5000, 10000,
+    static const array<u32, size> numNodes = {5000, 10000, 25000,
         50000, 100000, 500000, 1000000};
-    static const u32 insertIters = 100, extractMinIters = 100,
-        decreaseKeyIters = 250;
+    static const u32 insertIters = 400, extractMinIters = 400,
+        decreaseKeyIters = 800;
+    static const char* fileName = "heap_ca.txt";
+
+    ofstream ofs(fileName);
 
     srand(seed);
     random_device rd;
@@ -157,6 +178,7 @@ void heapComplexityAnalysis(u32 seed) {
         insertFib = {}, extractMinFib = {}, decreaseKeyFib = {};
 
     u32 current = 0;
+    if (writeToFile) ofs << "I\n>" << numNodes[current] << "\n";
     {
         BinaryHeap<bool> binHeap;
         FibonacciHeap<bool> fibHeap;
@@ -173,19 +195,24 @@ void heapComplexityAnalysis(u32 seed) {
 
             if (i < numNodes[current]) {
                 if (i >= numNodes[current] - insertIters) {
-                    insertBin[current] += interval<nanoseconds>(startBin, endBin);
-                    insertFib[current] += interval<nanoseconds>(startFib, endFib);
+                    u64 intBin = interval<nanoseconds>(startBin, endBin);
+                    u64 intFib = interval<nanoseconds>(startFib, endFib);
+                    insertBin[current] += intBin;
+                    insertFib[current] += intFib;
+                    if (writeToFile) ofs << intBin << " " << intFib << "\n";
                 }
             }
             else {
                 insertBin[current] /= insertIters;
                 insertFib[current] /= insertIters;
                 ++current;
+                if (writeToFile) ofs << ">" << numNodes[current] << "\n";
             }
         }
     }
 
     current = 0;
+    if (writeToFile) ofs << "EM\n>" << numNodes[current] << "\n";
     {
         BinaryHeap<bool> binHeap;
         FibonacciHeap<bool> fibHeap;
@@ -199,27 +226,32 @@ void heapComplexityAnalysis(u32 seed) {
                     auto start = high_resolution_clock::now();
                     binHeap.extractMin();
                     auto end = high_resolution_clock::now();
-                    extractMinBin[current] += interval<microseconds>(start, end);
+                    auto intBin = interval<nanoseconds>(start, end);
+                    extractMinBin[current] += intBin;
 
                     start = high_resolution_clock::now();
                     fibHeap.extractMin();
                     end = high_resolution_clock::now();
-                    extractMinFib[current] += interval<microseconds>(start, end);
+                    auto intFib = interval<nanoseconds>(start, end);
+                    extractMinFib[current] += intFib;
+                    if (writeToFile) ofs << intBin << " " << intFib << "\n";
                 }
                 extractMinBin[current] /= extractMinIters;
                 extractMinFib[current] /= extractMinIters;
 
                 for (u32 _ = 0; _ < extractMinIters; ++_) {
-                    double key = randomDouble(minKey, maxKey);
+                    double key = randDist(eng);
                     binHeap.insert(true, key);
                     fibHeap.insert(true, key);
                 }
                 ++current;
+                if (writeToFile) ofs << ">" << numNodes[current] << "\n";
             }
         }
     }
 
     current = 0;
+    if (writeToFile) ofs << "DK\n>" << numNodes[current] << "\n";
     {
         BinaryHeap<bool> binHeap;
         vector<BHNode<bool>*> vBin;
@@ -248,16 +280,20 @@ void heapComplexityAnalysis(u32 seed) {
                     auto start = high_resolution_clock::now();
                     binHeap.decreaseKey(vBin[idx], newKey);
                     auto end = high_resolution_clock::now();
-                    decreaseKeyBin[current] += interval<nanoseconds>(start, end);
+                    auto intBin = interval<nanoseconds>(start, end);
+                    decreaseKeyBin[current] += intBin;
 
                     start = high_resolution_clock::now();
                     fibHeap.decreaseKey(vFib[idx], newKey);
                     end = high_resolution_clock::now();
-                    decreaseKeyFib[current] += interval<nanoseconds>(start, end);
+                    auto intFib = interval<nanoseconds>(start, end);
+                    decreaseKeyFib[current] += intFib;
+                    if (writeToFile) ofs << intBin << " " << intFib << "\n";
                 }
                 decreaseKeyBin[current] /= decreaseKeyIters;
                 decreaseKeyFib[current] /= decreaseKeyIters;
                 ++current;
+                if (writeToFile) ofs << ">" << numNodes[current] << "\n";
             }
         }
     }

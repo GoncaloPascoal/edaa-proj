@@ -1,60 +1,115 @@
 
 #include <algorithm>
 #include <map>
+#include <unordered_map>
 #include "a_star.hpp"
 #include "../data_structures/fibonacci_heap.hpp"
 #include "../utils.hpp"
 
 using namespace std;
 
-pair<list<u64>, double> aStarSearch(Graph<OsmNode> g, u64 start, u64 end) {
+vector<ShortestPathResult> dijkstra(const Graph<OsmNode>& g, u64 start, const vector<u64>& endVec) {
+    vector<ShortestPathResult> res;
+    res.reserve(endVec.size());
+    if (endVec.empty()) return res;
+
     FibonacciHeap<u64> heap;
+    unordered_map<u64, FHNode<u64>*> fibHeapNodes;
+    unordered_map<u64, u64> predecessorMap;
+    unordered_map<u64, double> distanceMap;
+
+    distanceMap[start] = 0;
+    fibHeapNodes[start] = heap.insert(start, 0);
+
+    u64 next;
+    double distance;
+
+    while (!heap.empty()) {
+        next = heap.extractMin();
+        for (const auto& edge : g.getEdges(next)) {
+            distance = distanceMap[next] + edge.second;
+            bool seen = distanceMap.count(edge.first) != 0;
+
+            if (!seen || distance < distanceMap[edge.first]) {
+                distanceMap[edge.first] = distance;
+                predecessorMap[edge.first] = next;
+
+                if (seen) {
+                    heap.decreaseKey(fibHeapNodes[edge.first], distance);
+                }
+                else {
+                    fibHeapNodes[edge.first] = heap.insert(edge.first, distance);
+                }
+            }
+        }
+    }
+
+    for (const auto& end : endVec) {
+        ShortestPathResult res;
+        res.distance = distanceMap[end];
+
+        u64 node = end;
+        res.path.push_front(node);
+        while (predecessorMap.count(node)) {
+            node = predecessorMap[node];
+            res.path.push_front(node);
+        }
+    }
+
+    return res;
+}
+
+pair<list<u64>, double> aStarSearch(const Graph<OsmNode>& g, u64 start, u64 end) {
+    FibonacciHeap<u64> heap;
+    map<u64, FHNode<u64>*> fibHeapNodes;
     map<u64, u64> predecessorMap;
-    map<u64, double> currentCostMap;
+    map<u64, double> gScore;
 
     Coordinates endCoords     = g.getNode(end).coordinates;
     Coordinates currentCoords = g.getNode(start).coordinates;
 
     double distance = 0;
-    double estimate = currentCoords.haversine(endCoords);
-    currentCostMap[start] = distance;
-    predecessorMap[start] = start;
-    heap.insert(start, distance + estimate);
+    double fScore = distance + currentCoords.haversine(endCoords);
+    gScore[start] = distance;
+    fibHeapNodes[start] = heap.insert(start, fScore);
 
-    u64 min, nextNode;
+    u64 min, neighbor;
     double edgeLength;
-    list<pair<u64, double>> edges;
     while (!heap.empty()) {
         min = heap.extractMin();
-        edges = g.getEdges(min);
-        for (pair<u64, double> edge : edges) {
-            nextNode   = edge.first;
-            edgeLength = edge.second;
-            distance   = currentCostMap[min] + edgeLength;
+        fibHeapNodes.erase(min);
 
-            // Check if the destination node has been reached
-            if (nextNode == end) {
-                predecessorMap[nextNode] = min;
-
-                u64 node = end;
-                list<u64> path;
+        // Check if the destination node has been reached
+        if (min == end) {
+            u64 node = min;
+            list<u64> path;
+            path.push_front(node);
+            while (predecessorMap.count(node)) {
+                node = predecessorMap[node];
                 path.push_front(node);
-                while (node != start) {
-                    node = predecessorMap[node];
-                    path.push_front(node);
-                }
-
-                return make_pair(path, distance);
             }
 
-            // Update distance and predecessor and add node to the heap (only if the node is new)
-            if (!currentCostMap.count(nextNode)) {
-                currentCoords = g.getNode(nextNode).coordinates;
-                double estimate = currentCoords.haversine(endCoords);
+            return make_pair(path, distance);
+        }
 
-                currentCostMap[nextNode] = distance;
-                predecessorMap[nextNode] = min;
-                heap.insert(nextNode, distance + estimate);
+        for (const pair<u64, double>& edge : g.getEdges(min)) {
+            neighbor   = edge.first;
+            edgeLength = edge.second;
+            distance   = gScore[min] + edgeLength;
+
+            bool seen = gScore.count(neighbor) != 0;
+            if (!seen || distance < gScore[neighbor]) {
+                currentCoords = g.getNode(neighbor).coordinates;
+                fScore = distance + currentCoords.haversine(endCoords);
+
+                predecessorMap[neighbor] = min;
+                gScore[neighbor] = distance;
+                if (seen) {
+                    heap.decreaseKey(fibHeapNodes[neighbor], fScore);
+                }
+                else {
+                    fibHeapNodes[neighbor] = heap.insert(neighbor, fScore);
+                }
             }
         }
     }

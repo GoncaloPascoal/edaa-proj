@@ -49,3 +49,5 @@ _deps
 build/*
 
 data/*
+*.xml
+*.json

@@ -240,7 +240,7 @@ class FibonacciHeap {
         }
 
         void consolidate() {
-            std::vector<FHNode<T>*> a(ceil(log2(size)), nullptr);
+            std::vector<FHNode<T>*> a(ceil(log2(size)) + 1, nullptr);
 
             for (FHNode<T>* node : iterate(min)) {
                 u32 d = node->degree;
@@ -256,7 +256,7 @@ class FibonacciHeap {
                     addChild(lower, higher);
 
                     a[d] = nullptr;
-                    d += 1;
+                    ++d;
                 }
                 a[d] = node;
             }
