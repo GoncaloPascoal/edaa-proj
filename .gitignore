@@ -48,5 +48,6 @@ _deps
 .vscode/*
 build/*
 
+data/*
 *.xml
 *.json

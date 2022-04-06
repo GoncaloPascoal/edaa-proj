@@ -5,6 +5,7 @@
 #include "data_structures/kd_tree.hpp"
 #include "coordinates.hpp"
 #include "graph.hpp"
+#include "analysis/complexity.hpp"
 
 using namespace std;
 
@@ -77,7 +78,25 @@ void aStarTest() {
 }
 
 int main() {
-    //aStarTest();
+    // aStarTest();
+    // quadtreeRealDataComplexityAnalysis();
+    OsmXmlData data;
+    
+    cout << endl << "-------------------- PA --------------------" << endl << endl;
 
+    data = parseOsmXml("../data/pa.xml");
+    cout << data.graph.getNodes().size() << " nodes - " << data.graph.getSize() << " edges" << endl;
+    
+    cout << endl << "-------------------- DF --------------------" << endl << endl;
+
+    data = parseOsmXml("../data/df.xml");
+    cout << data.graph.getNodes().size() << " nodes - " << data.graph.getSize() << " edges" << endl;
+
+    cout << endl << "-------------------- RJ --------------------" << endl << endl;
+
+    data = parseOsmXml("../data/rj.xml");
+    cout << data.graph.getNodes().size() << " nodes - " << data.graph.getSize() << " edges" << endl;
+
+    cout << endl;
     return 0;
 }
